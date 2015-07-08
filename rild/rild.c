@@ -48,7 +48,12 @@ static void usage(const char *argv0) {
     exit(EXIT_FAILURE);
 }
 
+
 extern char rild[MAX_SOCKET_NAME_LENGTH];
+#ifdef ENABLE_MULTIPLE_CLIENTS
+extern char rild[MAX_SOCKET_NAME_LENGTH] __attribute__((weak));
+#endif
+
 
 extern void RIL_register (const RIL_RadioFunctions *callbacks);
 
@@ -170,6 +175,7 @@ int main(int argc, char **argv) {
         }
     }
 
+#ifdef ENABLE_MULTIPLE_CLIENTS
     if (clientId == NULL) {
         clientId = "0";
     } else if (atoi(clientId) >= MAX_RILDS) {
@@ -339,6 +345,10 @@ OpenLib:
         argc = make_argv(args, rilArgv);
     }
 
+<<<<<<< HEAD
+=======
+#ifdef ENABLE_MULTIPLE_CLIENTS
+>>>>>>> 47c63e8... ril: Support non-QCOM_HARDWARE multi-sim devices
     rilArgv[argc++] = "-c";
     rilArgv[argc++] = clientId;
     RLOGD("RIL_Init argc = %d clientId = %s", argc, rilArgv[argc-1]);
@@ -348,6 +358,19 @@ OpenLib:
 
     funcs = rilInit(&s_rilEnv, argc, rilArgv);
     RLOGD("RIL_Init rilInit completed");
+
+#ifdef ENABLE_MULTIPLE_CLIENTS
+    if (funcs == NULL) {
+        /* Pre-multi-client qualcomm vendor libraries won't support "-c" either, so
+         * try again without it. This should only happen on ancient qcoms, so raise
+         * a big fat warning
+         */
+        argc -= 2;
+        RLOGE("============= Retrying RIL_Init without a client id. This is only required for very old versions,");
+        RLOGE("============= and you're likely to have more radio breakage elsewhere!");
+        funcs = rilInit(&s_rilEnv, argc, rilArgv);
+    }
+#endif
 
     RIL_register(funcs);
 
